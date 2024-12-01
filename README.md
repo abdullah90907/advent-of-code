@@ -1,3 +1,4 @@
+![AoC_banner](https://github.com/user-attachments/assets/007b11e8-d057-4ba0-83b4-79ec023cdd69)
 # 🎄 Advent of Code 2024 🧩
 
 ## 🚀 Overview
