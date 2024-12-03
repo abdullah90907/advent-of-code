@@ -21,15 +21,12 @@
 - Language: Python
 - Problem-Solving Approach: Algorithmic Thinking
 
-## 🤝 Acknowledgments
-Special thanks to my mentors:
-- iCodeGuru
-- Sir Zafar Shahid
-- Sir Rizwan
 
 ## 🌟 Daily Progress
 - [x] Day 1: Completed ✅
-- [ ] Day 2-25: In Progress...
+- [x] Day 2: Completed ✅
+- [x] Day 3: Completed ✅
+- [ ] Day 3-25: In Progress...
 
 ## 📦 Repository Contents
 - Solution scripts
