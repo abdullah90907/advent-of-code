@@ -1,128 +1,134 @@
+from functools import cache
 
-from collections import deque
-from typing import List, Set, Tuple, Dict
-import heapq
+def read_input(file_path: str) -> str:
+    with open(file_path, "r") as file:
+        return file.read()
 
-def read_input(filename: str) -> List[str]:
-    with open(filename, 'r') as f:
-        return [line.strip() for line in f.readlines()]
+posi = [
+    ["7", "8", "9"],
+    ["4", "5", "6"],
+    ["1", "2", "3"],
+    [None, "0", "A"],
+]
+arr_pads = [
+    [None, "^", "A"],
+    ["<", "v", ">"]
+]
 
-def find_start_end(grid: List[str]) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-    start = end = None
-    for i in range(len(grid)):
-        for j in range(len(grid[0])):
-            if grid[i][j] == 'S':
-                start = (i, j)
-            elif grid[i][j] == 'E':
-                end = (i, j)
-    return start, end
+def get_pos(arr, code):
+    for i, row in enumerate(arr):
+        if code in row:
+            return (i, row.index(code))
 
-def get_neighbors(pos: Tuple[int, int], grid: List[str], cheating: bool = False) -> List[Tuple[int, int]]:
-    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-    neighbors = []
-    for dy, dx in directions:
-        new_y, new_x = pos[0] + dy, pos[1] + dx
-        if (0 <= new_y < len(grid) and 
-            0 <= new_x < len(grid[0]) and 
-            (cheating or grid[new_y][new_x] != '#')):
-            neighbors.append((new_y, new_x))
-    return neighbors
+@cache
+def shortest(start, end, layers):
+    if start == "<" and end == ">":
+        pass
+    if isinstance(start, str):
+        start = get_pos(arr_pads, start)
+    if isinstance(end, str):
+        end = get_pos(arr_pads, end)
 
-def find_reachable_positions(grid: List[str], start: Tuple[int, int], max_steps: int) -> Dict[Tuple[int, int], int]:
-    distances = {start: 0}
-    queue = [(0, start)]
-    
-    while queue:
-        dist, current = heapq.heappop(queue)
-        
-        if dist > max_steps:
-            continue
-            
-        for next_pos in get_neighbors(current, grid, cheating=True):
-            new_dist = dist + 1
-            
-            if new_dist <= max_steps and (next_pos not in distances or new_dist < distances[next_pos]):
-                distances[next_pos] = new_dist
-                heapq.heappush(queue, (new_dist, next_pos))
-    
-    return distances
-
-def shortest_path(grid: List[str], start: Tuple[int, int], end: Tuple[int, int]) -> Dict[Tuple[int, int], int]:
-    distances = {}
-    queue = [(0, start)]
-    distances[start] = 0
-    
-    while queue:
-        dist, current = heapq.heappop(queue)
-        
-        if dist > distances[current]:
-            continue
-            
-        for next_pos in get_neighbors(current, grid):
-            new_dist = dist + 1
-            
-            if next_pos not in distances or new_dist < distances[next_pos]:
-                distances[next_pos] = new_dist
-                heapq.heappush(queue, (new_dist, next_pos))
-    
-    return distances
-
-def find_cheats(grid: List[str], normal_distances: Dict[Tuple[int, int], int], 
-                start: Tuple[int, int], end: Tuple[int, int]) -> Dict[int, int]:
-    MAX_CHEAT_LENGTH = 20
-    savings = {}
-    height, width = len(grid), len(grid[0])
-    
-    # For each possible cheat start position
-    for y1 in range(height):
-        for x1 in range(width):
-            if grid[y1][x1] == '#':
-                continue
-            pos1 = (y1, x1)
-            if pos1 not in normal_distances:
-                continue
-                
-            # Find all positions reachable within MAX_CHEAT_LENGTH steps while cheating
-            reachable = find_reachable_positions(grid, pos1, MAX_CHEAT_LENGTH)
-            
-            # For each reachable position that's on a valid path
-            for pos2, cheat_length in reachable.items():
-                if grid[pos2[0]][pos2[1]] == '#':
-                    continue
-                    
-                # If we can reach both positions in normal path
-                if pos1 in normal_distances and pos2 in normal_distances:
-                    # Calculate time saved
-                    normal_time = normal_distances[end]
-                    cheat_time = (normal_distances[pos1] + 
-                                cheat_length + 
-                                (normal_distances[end] - normal_distances[pos2]))
-                    
-                    if cheat_time < normal_time:
-                        saved = normal_time - cheat_time
-                        savings[saved] = savings.get(saved, 0) + 1
-    
-    return savings
-
-def solve(grid: List[str]) -> int:
-    start, end = find_start_end(grid)
-    
-    # Replace S and E with . for easier processing
-    grid = [row.replace('S', '.').replace('E', '.') for row in grid]
-    
-    # Find normal shortest path distances
-    normal_distances = shortest_path(grid, start, end)
-    
-    # Find all possible cheats and their time savings
-    savings = find_cheats(grid, normal_distances, start, end)
-    
-    # Count cheats that save at least 100 picoseconds
-    return sum(count for saved, count in savings.items() if saved >= 100)
+    if layers == 0:
+        return 1
+    elif layers < 26:
+        vert = None
+        hori = None
+        if end[0] < start[0]:
+            vert = "^"
+        elif end[0] > start[0]:
+            vert = "v"
+        if end[1] < start[1]:
+            hori = "<"
+        elif end[1] > start[1]:
+            hori = ">"
+        if not hori and not vert:
+            return shortest("A", "A", layers - 1)
+        elif not hori:
+            return shortest("A", vert, layers - 1) + (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + shortest(vert, "A", layers - 1)
+        elif not vert:
+            return shortest("A", hori, layers - 1) + (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + shortest(hori, "A", layers - 1)
+        else:
+            if start[1] == 0:
+                return shortest("A", hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, "A", layers - 1)
+            elif end[1] == 0:
+                return shortest("A", vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, "A", layers - 1)
+            else:
+                return min(
+                    shortest("A", hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, "A", layers - 1),
+                    shortest("A", vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, "A", layers - 1)
+                )
+    else:
+        vert = None
+        hori = None
+        if end[0] < start[0]:
+            vert = "^"
+        elif end[0] > start[0]:
+            vert = "v"
+        if end[1] < start[1]:
+            hori = "<"
+        elif end[1] > start[1]:
+            hori = ">"
+        if not hori and not vert:
+            return shortest("A", "A", layers - 1)
+        elif not hori:
+            return shortest("A", vert, layers - 1) + (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + shortest(vert, "A", layers - 1)
+        elif not vert:
+            return shortest("A", hori, layers - 1) + (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + shortest(hori, "A", layers - 1)
+        else:
+            if start[1] == 0 and end[0] == 3:
+                return shortest("A", hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, "A", layers - 1)
+            elif end[1] == 0 and start[0] == 3:
+                return shortest("A", vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, "A", layers - 1)
+            else:
+                return min(
+                    shortest("A", hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, "A", layers - 1),
+                    shortest("A", vert, layers - 1) + \
+                    (abs(end[0] - start[0]) - 1) * shortest(vert, vert, layers - 1) + \
+                    shortest(vert, hori, layers - 1) + \
+                    (abs(end[1] - start[1]) - 1) * shortest(hori, hori, layers - 1) + \
+                    shortest(hori, "A", layers - 1)
+                )
 
 def main():
-    grid = read_input("input.txt")
-    result = solve(grid)
-    print(f"Number of cheats saving at least 100 picoseconds: {result}")
+    input_lines = read_input("input.txt").strip().split("\n")
+    score = 0
+    for line in input_lines:
+        intval = int(line[:3])
+        total = 0
+        for startp, endp in zip("A" + line[:3], line):
+            total += shortest(get_pos(posi, startp), get_pos(posi, endp), 26)
+        print(intval, total)
+        score += intval * total
+    print(score)
 
 if __name__ == "__main__":
     main()
